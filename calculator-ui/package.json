@@ -1,0 +1,16 @@
+{
+  "name": "calculator-ui",
+  "version": "1.0.0",
+  "description": "Presentation layer for the calculator: a minimal vanilla HTML/CSS/JS UI with a Percentage (%) button that calls the calculator-core API and renders the result into #display.",
+  "scripts": {
+    "test": "jest"
+  },
+  "license": "MIT",
+  "jest": {
+    "testEnvironment": "jsdom"
+  },
+  "devDependencies": {
+    "jest": "^30.4.2",
+    "jest-environment-jsdom": "^30.4.1"
+  }
+}
