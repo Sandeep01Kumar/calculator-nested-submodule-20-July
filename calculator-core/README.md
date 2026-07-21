@@ -55,10 +55,11 @@ computation locally — each calls through to the engine.
 
 ### Node.js / CommonJS usage
 
-Under Node, `require` returns the API object:
+Under Node, requiring this module from its own directory returns the API object:
 
 ```js
-const core = require('calculator-core'); // main: index.js
+const core = require('.'); // from the calculator-core directory (resolves to main: index.js)
+                           // from the repo root, use require('./calculator-core')
 
 core.percentage(200, 10);         // => 20   (10% of 200)
 core.calculatePercentage(50, 10); // => 5    (10% of 50)
@@ -111,7 +112,7 @@ For the computation details, see the nested engine documentation:
 
 ### Prerequisites
 
-- **Node.js** — Jest 30 supports `^18.14 || ^20 || >=22`; verified on **Node 22.x**.
+- **Node.js** — Jest 30 supports `^18.14.0 || ^20.0.0 || ^22.0.0 || >=24.0.0`; verified on **Node 22.x**.
 
 ### Commands
 

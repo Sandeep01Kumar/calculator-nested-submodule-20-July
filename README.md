@@ -170,7 +170,7 @@ dependencies** — the only packages are development-time test tooling.
 | `jest` | `^30.4.2` | all three modules | Test runner; native CommonJS support (no transform required) |
 | `jest-environment-jsdom` | `^30.4.1` | `calculator-ui` only | Provides the jsdom DOM environment for UI tests |
 
-**Node.js runtime.** Jest 30 supports Node.js `^18.14 || ^20 || >=22`. The verified
+**Node.js runtime.** Jest 30 supports Node.js `^18.14.0 || ^20.0.0 || ^22.0.0 || >=24.0.0`. The verified
 development runtime is **Node.js 22.x** with **npm 11.x**.
 
 ### Install & run tests (per module)

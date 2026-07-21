@@ -88,7 +88,7 @@ runtimes with **no bundler and zero dependencies**. The sibling
 
 ### Prerequisites
 
-- **Node.js** — Jest 30 supports `^18.14 || ^20 || >=22`; verified on **Node 22.x**.
+- **Node.js** — Jest 30 supports `^18.14.0 || ^20.0.0 || ^22.0.0 || >=24.0.0`; verified on **Node 22.x**.
 
 ### Commands
 
