@@ -1,7 +1,7 @@
 {
   "name": "calculator-ui",
   "version": "1.0.0",
-  "description": "Presentation layer for the calculator (vanilla HTML/CSS/JS). This package currently provides the UI test tooling (Jest + jsdom) and styling foundation; the runtime markup and handler — a Percentage (%) button that will call the calculator-core API and render the result into #display — are planned for the UI milestone.",
+  "description": "Presentation layer for the calculator: a minimal vanilla HTML/CSS/JS UI with a Percentage (%) button that calls the calculator-core API and renders the result into #display, plus a jsdom-based Jest suite covering the button, controller, and display behavior.",
   "scripts": {
     "test": "jest"
   },

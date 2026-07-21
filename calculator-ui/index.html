@@ -10,10 +10,13 @@
 
       Role (AAP §0.5.1 Group 3, §0.5.2, §0.5.3): a minimal, framework-free
       vanilla HTML5 shell for the nested-submodule calculator. It provides the
-      shared display (#display) and the Percentage (%) button (#percent), links
-      the local stylesheet, and loads the JavaScript that wires the % button to
-      the calculator-core percentage API. It contains NO inline logic — all
-      behavior lives in app.js.
+      shared display (#display), the Percentage (%) button (#percent), a concise
+      two-press instructions blurb (#percent-help) linked to both via
+      aria-describedby, and a live status region (#status, role="status") that
+      app.js updates so the two-press state changes are announced to assistive
+      technology. It links the local stylesheet and loads the JavaScript that
+      wires the % button to the calculator-core percentage API. It contains NO
+      inline logic — all behavior lives in app.js.
 
       Control / data flow (AAP §0.1.3, §0.4.2):
         #percent click
@@ -26,9 +29,15 @@
         - Element ids `display` and `percent` are a hard contract with app.js
           (document.getElementById('display') / getElementById('percent')). Do
           not rename without updating app.js and app.test.js.
+        - Element id `status` is written by app.js (getElementById('status')) to
+          announce the stored base, the computed result, and failures; keep it a
+          role="status" aria-live region so those updates are perceivable. The
+          app.test.js DOM mirrors #status so status behavior is under test.
+        - Element id `percent-help` holds the two-press instructions and is
+          referenced by the display's and button's aria-describedby.
         - Class names mirror calculator-ui/style.css: calculator,
-          calculator__title, calculator__display, calculator__buttons,
-          calculator__button.
+          calculator__title, calculator__help, calculator__display,
+          calculator__buttons, calculator__button, calculator__status.
         - The three <script> tags at the end of <body> MUST load in the order
           engine -> core -> app (see note there). This order is non-negotiable
           (UMD/dual-export, no bundler) so window.percentage and
@@ -39,6 +48,17 @@
     <main class="calculator">
       <h1 class="calculator__title">Calculator</h1>
 
+      <!--
+        Two-press instructions for the % operation. Linked to both the display and
+        the % button via aria-describedby so assistive-tech users learn how the
+        binary percentage interaction works before acting (UI-1).
+      -->
+      <p id="percent-help" class="calculator__help">
+        Percentage is a two-step action: type a base value and press
+        <strong>%</strong>, then type the percent and press <strong>%</strong>
+        again. The result appears in the display.
+      </p>
+
       <!-- Shared display: user types an operand here; results are rendered here too. -->
       <input
         id="display"
@@ -46,13 +66,28 @@
         type="text"
         inputmode="decimal"
         aria-label="Calculator display"
+        aria-describedby="percent-help status"
         value=""
       />
 
       <div class="calculator__buttons">
         <!-- Percentage (%) button: computes (a * b) / 100 via calculator-core. -->
-        <button id="percent" type="button" class="calculator__button" aria-label="Percent">%</button>
+        <button
+          id="percent"
+          type="button"
+          class="calculator__button"
+          aria-label="Percent"
+          aria-describedby="percent-help"
+        >%</button>
       </div>
+
+      <!--
+        Live status region: app.js writes here when the base value is stored, when
+        a result is produced, and on failure. role="status" + aria-live="polite"
+        announces these changes to assistive technology WITHOUT moving focus, so
+        the otherwise-silent two-press state transitions are perceivable (UI-1).
+      -->
+      <p id="status" class="calculator__status" role="status" aria-live="polite"></p>
     </main>
 
     <!--

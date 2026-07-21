@@ -8,21 +8,20 @@ architecture** and delivers a single feature as a vertical slice: a **Percentage
 (%)** operation that flows from the calculator interface down to the computation
 layer and back to the display.
 
-> **Implementation status (current milestone).** The **computation layer**
-> (`math-engine`) and the **API layer** (`calculator-core`) are implemented and
-> fully tested, and the `calculator-ui` **foundation** (`package.json`,
-> `style.css`) is in place. The `calculator-ui` **runtime** files —
-> `index.html`, `app.js`, `app.test.js`, and `calculator-ui/README.md` — are
-> **pending** and are delivered in a later UI milestone. Wherever the sections
-> below describe UI markup, the click handler, UI tests, or opening the page in a
-> browser, they describe the **target** behavior and are marked _(planned)_ until
-> those files exist.
+> **Implementation status.** All three layers are implemented and fully tested:
+> the **computation layer** (`math-engine`), the **API layer** (`calculator-core`),
+> and the **presentation layer** (`calculator-ui`) — the latter comprising
+> `index.html`, `app.js`, `style.css`, and the jsdom test suite `app.test.js`. The
+> test suites pass across every module (**7** engine, **20** core including the
+> nested engine suite, and **16** UI). The sole remaining deliverable is
+> `calculator-ui/README.md`, which is **pending**; it is the only item marked
+> _(pending)_ below.
 
 The codebase is organized into three cooperating modules:
 
 | Module | Role | Key files |
 |--------|------|-----------|
-| `calculator-ui` _(runtime planned)_ | **Presentation layer** — the browser UI | `style.css` (present); `index.html`, `app.js`, `README.md` _(planned)_ |
+| `calculator-ui` | **Presentation layer** — the browser UI | `index.html`, `app.js`, `style.css`, `app.test.js`; `README.md` _(pending)_ |
 | [`calculator-core`](calculator-core/README.md) | **API layer** — a thin delegation layer exposing the percentage API | `index.js` |
 | [`math-engine`](calculator-core/math-engine/README.md) | **Computation layer** — pure arithmetic, nested inside `calculator-core` | `percentage.js` |
 
@@ -46,12 +45,12 @@ of the project.
 calculator-nested-submodule-20-July/   (parent repository)
 ├── README.md                          (this file)
 ├── calculator-ui/                     (presentation module)
-│   ├── index.html                     % button + #display input          (planned)
-│   ├── app.js                         click handler -> core API -> display (planned)
+│   ├── index.html                     % button + #display input
+│   ├── app.js                         click handler -> core API -> display
 │   ├── style.css                      button styling
-│   ├── app.test.js                    jsdom UI tests                     (planned)
+│   ├── app.test.js                    jsdom UI tests (16 tests)
 │   ├── package.json                   jest + jest-environment-jsdom
-│   └── README.md                      UI usage + % button                (planned)
+│   └── README.md                      UI usage + % button                (pending)
 └── calculator-core/                   (API module)
     ├── index.js                       percentage API (delegates to math-engine)
     ├── index.test.js                  API delegation tests
@@ -79,10 +78,10 @@ flowchart TD
 
 **All submodules are first-class.** `calculator-ui`, `calculator-core`, and the
 nested `math-engine` are each treated as an integral part of the project; none is
-excluded from the documentation or the build. `calculator-core` and `math-engine`
-carry their own `README.md` and JSDoc-annotated source today; the
-`calculator-ui/README.md` (and the UI source it documents) is **planned** for the
-UI milestone.
+excluded from the documentation or the build. Every module carries
+JSDoc-annotated source today, and `calculator-core` and `math-engine` also carry
+their own `README.md`. The only documentation still outstanding is
+`calculator-ui/README.md`, which is **pending**.
 
 **In-tree directories (no `.gitmodules`).** This repository represents the
 nested-submodule topology using **in-tree directories** rather than wired Git
@@ -96,10 +95,9 @@ repository brings every module with it.
 
 The feature adds a **`%` button** to the calculator UI. When activated, the UI
 reads its operands, asks `calculator-core` to compute the percentage, and writes
-the numeric result back into the calculator display. The computation and API
-layers that power this are implemented and tested today; the UI markup and click
-handler a user interacts with are _(planned)_ for the UI milestone (see
-**Implementation status** above).
+the numeric result back into the calculator display. All three layers that power
+this — the UI markup and click handler, the core API, and the computation
+function — are implemented and tested today (see **Implementation status** above).
 
 ### Semantics
 
@@ -122,11 +120,8 @@ The function is a pure, stateless, constant-time calculation with no I/O.
 
 ### End-to-end data & control flow
 
-> _(planned)_ The steps that involve `calculator-ui/index.html` and
-> `calculator-ui/app.js` (clicking the `%` button and writing to `#display`)
-> describe the **target** UI flow; those files land in the UI milestone. The
-> `calculator-core` → `math-engine` path (steps 3–5 below) is implemented and
-> tested today.
+The full path below — from the `%` button through the core API to the engine and
+back to the display — is implemented and exercised by the test suites today.
 
 ```mermaid
 flowchart LR
@@ -190,26 +185,26 @@ cd calculator-core/math-engine && npm install && npm test
 cd calculator-core && npm install && npm test
 
 # Presentation layer (uses the jsdom environment)
-# NOTE (planned): the UI test command works once calculator-ui/app.test.js
-# exists. Until then `npm test` here reports "No tests found" and exits 1; use
-# `npx jest --passWithNoTests` for a clean exit in the interim.
 cd calculator-ui && npm install && npm test
 ```
 
 `npm test` invokes `jest`, which discovers and runs the module's `*.test.js` files.
-For `calculator-core`, Jest's default discovery runs **two** suites (`index.test.js`
-and the nested `math-engine/percentage.test.js`, 20 tests total); run
-`npx jest index.test.js` there to target only the core API suite.
+Current suite sizes are **`math-engine` 7 tests**, **`calculator-ui` 16 tests**, and
+**`calculator-core` 20 tests** — the last because Jest's default discovery there runs
+**two** suites: `index.test.js` (13 API tests) plus the nested
+`math-engine/percentage.test.js` (7). Run `npx jest index.test.js` in
+`calculator-core` to target only the 13-test core API suite.
 
-### Run the UI _(planned)_
+### Run the UI
 
-The UI is a static page — no server is required. **These steps apply once the UI
-runtime files (`index.html`, `app.js`) are added in the UI milestone:**
+The UI is a static page — no server is required.
 
 1. Open `calculator-ui/index.html` directly in a web browser.
-2. Enter the operands and click the **`%`** button.
-3. The computed percentage appears in the calculator display
-   (`<input id="display">`).
+2. Enter the first operand (the base) and press **`%`** to store it; the display
+   clears and a status line confirms the stored value.
+3. Enter the percent and press **`%`** again.
+4. The computed percentage appears in the calculator display
+   (`<input id="display">`), and the status line announces the result.
 
 ---
 
@@ -219,12 +214,12 @@ Documentation is a first-class deliverable of this project. **Every module — t
 parent repository and all submodules, including the nested `math-engine` — is in
 scope for its own `README.md`, with every function/API annotated with JSDoc.** No
 submodule is skipped or excluded. The parent, `calculator-core`, and `math-engine`
-READMEs (and their JSDoc) exist today; the `calculator-ui/README.md` is **planned**
-for the UI milestone.
+READMEs — and the JSDoc across every module's source, including `calculator-ui` —
+exist today; the `calculator-ui/README.md` is the sole **pending** document.
 
 Per-module documentation:
 
-- `calculator-ui/README.md` _(planned)_ — the presentation layer, the `%` button,
+- `calculator-ui/README.md` _(pending)_ — the presentation layer, the `%` button,
   and how to run the UI.
 - [`calculator-core/README.md`](calculator-core/README.md) — the percentage API
   surface and its wiring to `math-engine`.
@@ -237,16 +232,16 @@ Per-module documentation:
 
 | Path | Purpose |
 |------|---------|
-| `calculator-ui/index.html` _(planned)_ | Calculator markup: the `%` button and the `#display` input |
-| `calculator-ui/app.js` _(planned)_ | Click handler: reads operands, calls the core API, updates `#display` |
+| `calculator-ui/index.html` | Calculator markup: the `%` button and the `#display` input |
+| `calculator-ui/app.js` | Click handler: reads operands, calls the core API, updates `#display` |
 | `calculator-ui/style.css` | Button and layout styling |
-| `calculator-ui/app.test.js` _(planned)_ | jsdom-based UI tests for the `%` button and display update |
+| `calculator-ui/app.test.js` | jsdom-based UI tests for the `%` button and display update (16 tests) |
 | `calculator-core/index.js` | Percentage API; delegates to `math-engine` |
 | `calculator-core/index.test.js` | Tests proving the API delegates to the engine (mock/spy) plus the browser (UMD) dependency contract |
 | `calculator-core/math-engine/percentage.js` | `percentage(a, b) = (a * b) / 100` |
 | `calculator-core/math-engine/percentage.test.js` | Unit tests for the percentage function |
 | `**/package.json` | Per-module Jest tooling and `test` script |
-| `**/README.md` | Per-module documentation (`calculator-ui/README.md` _(planned)_) |
+| `**/README.md` | Per-module documentation (`calculator-ui/README.md` _(pending)_) |
 
 ---
 
