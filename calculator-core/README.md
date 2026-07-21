@@ -134,9 +134,9 @@ discovers **two** suites:
 - `index.test.js` — the core API, delegation, and browser-contract tests
   (**13 tests**), and
 - `math-engine/percentage.test.js` — the nested engine's own unit tests
-  (**7 tests**).
+  (**10 tests**).
 
-Together they run **20 tests across 2 suites**. Exercising the nested engine
+Together they run **23 tests across 2 suites**. Exercising the nested engine
 suite alongside the core API is intentional: it validates the whole delegation
 path end to end. To run only the core suite in isolation, target it explicitly:
 

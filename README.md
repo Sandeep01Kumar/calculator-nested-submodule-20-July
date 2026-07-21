@@ -13,7 +13,7 @@ layer and back to the display.
 > (`calculator-core`), and the **presentation layer** (`calculator-ui`) — the
 > latter comprising `index.html`, `app.js`, `style.css`, and the jsdom/Node test
 > suites `app.test.js` and `app.node.test.js`. The test suites pass across every
-> module (**7** engine, **20** core including the nested engine suite, and **25**
+> module (**10** engine, **23** core including the nested engine suite, and **29**
 > UI). Every module — the parent repository and all three submodules — carries its
 > own `README.md`, so there are no outstanding documentation deliverables.
 
@@ -48,7 +48,7 @@ calculator-nested-submodule-20-July/   (parent repository)
 │   ├── index.html                     % button + #display input
 │   ├── app.js                         click handler -> core API -> display
 │   ├── style.css                      button styling
-│   ├── app.test.js                    jsdom UI tests (19 tests)
+│   ├── app.test.js                    jsdom UI tests (23 tests)
 │   ├── app.node.test.js               Node-env defensive tests (6 tests)
 │   ├── package.json                   jest + jest-environment-jsdom
 │   └── README.md                      UI usage + % button
@@ -191,13 +191,13 @@ parent repository root — each is wrapped in a subshell `( … )` so its `cd` d
 ```
 
 `npm test` invokes `jest`, which discovers and runs the module's `*.test.js` files.
-Current suite sizes are **`math-engine` 7 tests**, **`calculator-ui` 25 tests**, and
-**`calculator-core` 20 tests**. The `calculator-ui` count spans **two** suites:
-`app.test.js` (19 jsdom tests) plus `app.node.test.js` (6 tests that run in the
+Current suite sizes are **`math-engine` 10 tests**, **`calculator-ui` 29 tests**, and
+**`calculator-core` 23 tests**. The `calculator-ui` count spans **two** suites:
+`app.test.js` (23 jsdom tests) plus `app.node.test.js` (6 tests that run in the
 default Node environment via a `@jest-environment node` docblock, covering the
 no-`document` and missing-display defensive paths). The `calculator-core` count is
 likewise **two** suites under Jest's default discovery: `index.test.js` (13 API
-tests) plus the nested `math-engine/percentage.test.js` (7). Run
+tests) plus the nested `math-engine/percentage.test.js` (10). Run
 `npx jest index.test.js` in `calculator-core` to target only the 13-test core API
 suite.
 
@@ -241,7 +241,7 @@ Per-module documentation:
 | `calculator-ui/index.html` | Calculator markup: the `%` button and the `#display` input |
 | `calculator-ui/app.js` | Click handler: reads operands, calls the core API, updates `#display` |
 | `calculator-ui/style.css` | Button and layout styling |
-| `calculator-ui/app.test.js` | jsdom-based UI tests for the `%` button and display update (19 tests) |
+| `calculator-ui/app.test.js` | jsdom-based UI tests for the `%` button and display update (23 tests) |
 | `calculator-ui/app.node.test.js` | Node-environment defensive tests: no-`document` safety and the missing-display fail-safe (6 tests) |
 | `calculator-core/index.js` | Percentage API; delegates to `math-engine` |
 | `calculator-core/index.test.js` | Tests proving the API delegates to the engine (mock/spy) plus the browser (UMD) dependency contract |

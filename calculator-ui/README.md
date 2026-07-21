@@ -30,7 +30,7 @@ percentage, and writes the numeric result back into `<input id="display">`.
 | `index.html` | Calculator markup — the shared `#display` input, the `#percent` (`%`) button, a two-press instructions blurb, a live `#status` region, and the ordered `<script>` tags that load the engine, core, and app. Contains **no** inline logic. |
 | `app.js` | The click handler / wiring: reads the operand from `#display`, delegates the computation to the `calculator-core` percentage API, and writes the numeric result back to the display. Holds all UI behavior; JSDoc-annotated. |
 | `style.css` | Minimal, framework-free styling — 50×40 buttons, a compact card layout, and a visible keyboard focus indicator. |
-| `app.test.js` | jsdom-based Jest test suite (**19 tests**) covering the `%` button, the two-press interaction, whole-value numeric coercion, failure-safe display handling, and the missing-`#display` fail-safe (APP-1). |
+| `app.test.js` | jsdom-based Jest test suite (**23 tests**) covering the `%` button, the two-press interaction, whole-value numeric coercion, failure-safe display handling, and the missing-`#display` fail-safe (APP-1). |
 | `app.node.test.js` | Node-environment Jest suite (**6 tests**, `@jest-environment node`) covering the no-`document` defensive guards and the DOM-free helpers (APP-1). |
 | `package.json` | Module manifest declaring the Jest + jsdom dev tooling and the `test` script. |
 
@@ -146,10 +146,10 @@ npm test      # runs jest -> executes app.test.js (jsdom) and app.node.test.js (
 
 `npm test` invokes `jest` (declared in this module's `package.json`). The default
 test environment is **jsdom** (`"testEnvironment": "jsdom"`), which supplies the
-DOM globals the UI tests need. Jest discovers **two** suites here (**25 tests**
+DOM globals the UI tests need. Jest discovers **two** suites here (**29 tests**
 total):
 
-- **`app.test.js` (19 tests, jsdom).** Builds a small DOM, simulates clicking the
+- **`app.test.js` (23 tests, jsdom).** Builds a small DOM, simulates clicking the
   `%` button through the two-press interaction, and asserts that the display
   updates correctly, that non-numeric input is coerced to `0`, and that a missing
   `#display` element clears any pending base (the fail-safe policy).
