@@ -55,6 +55,16 @@
  * path (success, non-finite result, or thrown exception), so a core failure can
  * never trap the user in a stale second stage.
  *
+ * Defensive DOM handling (APP-1): every DOM lookup is guarded with a
+ * `typeof document === 'undefined'` check so the exported helpers (`init`,
+ * `handlePercent`) are safe to call in a plain Node context (no jsdom) instead of
+ * throwing a `ReferenceError`. In addition, if the `#display` element is missing
+ * when the handler runs, `handlePercent()` applies a FAIL-SAFE policy: it clears
+ * any pending stored base operand and no-ops, so a later restoration of the
+ * display starts a fresh calculation rather than silently computing against a
+ * stale base. The normal two-press behavior when the display is present is
+ * unchanged.
+ *
  * This module deliberately performs NO percentage arithmetic of its own: the
  * single source of truth for the computation lives in math-engine, calculator-core
  * delegates to it, and this UI layer delegates to calculator-core (AAP §0.7.2).
@@ -164,10 +174,16 @@
    * that does not include it) this is a safe no-op, so the handler never depends
    * on its presence. In index.html the element carries role="status" plus
    * aria-live="polite" so updates are announced without stealing focus (UI-1).
+   *
+   * DOM-safe (APP-1): guarded with `typeof document === 'undefined'` so it is a
+   * safe no-op in a plain Node context (no jsdom) instead of throwing.
    * @param {string} message - The human-readable status message to announce.
    * @returns {void}
    */
   function setStatus(message) {
+    if (typeof document === 'undefined') {
+      return;
+    }
     var status = document.getElementById('status');
     if (status) {
       status.textContent = message;
@@ -197,9 +213,19 @@
 
   /**
    * Read the #display input element from the current document.
-   * @returns {?HTMLInputElement} The display element, or null if it is absent.
+   *
+   * DOM-safe (APP-1): guarded with `typeof document === 'undefined'` so it
+   * returns `null` (rather than throwing a ReferenceError) when called in a plain
+   * Node context with no `document` global. Callers already treat a `null`
+   * display as "absent", so the no-document case funnels into the same fail-safe
+   * path as a missing `#display` element.
+   * @returns {?HTMLInputElement} The display element, or `null` if it is absent
+   *   (including when there is no `document` at all).
    */
   function getDisplay() {
+    if (typeof document === 'undefined') {
+      return null;
+    }
     return document.getElementById('display');
   }
 
@@ -224,12 +250,25 @@
    *   - in ALL cases       -> the stored base operand is reset in `finally`, so a
    *                           failure can never leave a stale first operand that
    *                           traps later clicks in the second stage.
-   * If the display element is missing the handler is a no-op.
+   *
+   * Missing-display fail-safe (APP-1): if the `#display` element is absent when
+   * the handler runs (it was removed from the DOM, or there is no `document` at
+   * all in a plain Node context), the handler CLEARS any pending stored base and
+   * no-ops. This guarantees a later restoration of the display begins a fresh
+   * first press rather than silently computing against a stale base captured
+   * before the display disappeared. The normal two-press behavior when the
+   * display is present is unchanged.
    * @returns {void}
    */
   function handlePercent() {
     var display = getDisplay();
     if (!display) {
+      // Fail-safe missing-display policy (APP-1): the #display element is absent
+      // (removed from the DOM mid-interaction, or no `document` at all in a plain
+      // Node context). Clear any pending stored base BEFORE returning so a later
+      // restoration of the display starts a fresh first press instead of silently
+      // computing "b percent of" a stale base captured before it disappeared.
+      state.firstOperand = null;
       return;
     }
     var current = toNumber(display.value);
@@ -282,9 +321,16 @@
    * its click listener. Safe to call once after the DOM exists; a no-op if the
    * button is absent. In the browser this is invoked automatically (see the
    * auto-init guard below); under Jest/jsdom the test calls it explicitly.
+   *
+   * DOM-safe (APP-1): guarded with `typeof document === 'undefined'` so it is a
+   * safe no-op in a plain Node context (no jsdom) instead of throwing a
+   * ReferenceError when the exported helper is called directly.
    * @returns {void}
    */
   function init() {
+    if (typeof document === 'undefined') {
+      return;
+    }
     var button = document.getElementById('percent');
     if (button) {
       button.addEventListener('click', handlePercent);

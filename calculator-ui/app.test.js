@@ -297,6 +297,76 @@ describe('calculator-ui percentage (%) button', () => {
   });
 });
 
+// --- Defensive missing-#display behavior (APP-1) -----------------------------
+// Regression coverage for the fail-safe missing-display policy: when #display is
+// absent while the handler runs, handlePercent() must CLEAR any pending base and
+// no-op, so a later restoration begins a FRESH calculation and never silently
+// computes against a stale base. (The no-global-`document` calls are covered by
+// the companion app.node.test.js, which runs in the Node test environment where
+// `document` is genuinely undefined — jsdom always installs a non-configurable
+// `document`, so the no-document path cannot be exercised from this jsdom file.)
+describe('calculator-ui percentage (%) button — missing #display fail-safe (APP-1)', () => {
+  /** @type {jest.Mock} A deterministic local stub standing in for calculator-core. */
+  let percentSpy;
+
+  beforeEach(() => {
+    setupDom();
+    app.resetState();
+    percentSpy = jest.fn((a, b) => (a * b) / 100);
+    window.calculatorCore = { percentage: percentSpy, calculatePercentage: percentSpy };
+    app.init();
+  });
+
+  afterEach(() => {
+    delete window.calculatorCore;
+    document.body.innerHTML = '';
+    app.resetState();
+  });
+
+  test('display absent on the FIRST stage: no throw, no compute, state stays clear', () => {
+    // Remove the display before any base is captured (first-stage absence).
+    document.getElementById('display').remove();
+    expect(() => app.handlePercent()).not.toThrow();
+    expect(percentSpy).not.toHaveBeenCalled();
+    expect(app.getState().firstOperand).toBeNull();
+  });
+
+  test('display removed BETWEEN presses clears the pending base (no stale compute)', () => {
+    const display = document.getElementById('display');
+    display.value = '200';
+    document.getElementById('percent').click(); // first press: store base 200
+    expect(app.getState().firstOperand).toBe(200);
+
+    // The display disappears before the second press (second-stage absence).
+    display.remove();
+    expect(() => app.handlePercent()).not.toThrow();
+    // Fail-safe policy: nothing is computed and the pending base is cleared, so a
+    // restored display cannot later compute against the stale 200 (APP-1).
+    expect(percentSpy).not.toHaveBeenCalled();
+    expect(app.getState().firstOperand).toBeNull();
+  });
+
+  test('after the display is restored, the next press starts a FRESH first stage', () => {
+    const display = document.getElementById('display');
+    display.value = '200';
+    document.getElementById('percent').click(); // store base 200
+    display.remove();
+    app.handlePercent();                         // missing-display policy clears the base
+    expect(app.getState().firstOperand).toBeNull();
+
+    // Restore the DOM and press again: this MUST be a fresh first press that
+    // stores the NEW base (50), never silently computing 50% of the stale 200.
+    setupDom();
+    app.init();
+    const restored = document.getElementById('display');
+    restored.value = '50';
+    document.getElementById('percent').click();
+    expect(percentSpy).not.toHaveBeenCalled();     // fresh first press: no compute
+    expect(restored.value).toBe('');               // display cleared for the percent b
+    expect(app.getState().firstOperand).toBe(50);  // NEW base, not the stale 200
+  });
+});
+
 // --- Real-core integration (no stub): proves the true UI -> core -> engine chain (TEST-2) ---
 describe('calculator-ui percentage (%) button — real calculator-core integration', () => {
   // The ACTUAL calculator-core package (which delegates to the real math-engine).

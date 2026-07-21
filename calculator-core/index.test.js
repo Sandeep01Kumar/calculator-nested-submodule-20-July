@@ -15,8 +15,12 @@
  *   - DEFAULT Node test environment. This suite deliberately uses NO DOM globals
  *     (`document`/`window`); the jsdom environment belongs to `calculator-ui`
  *     only (AAP §0.3.1).
- *   - Fully deterministic: no network, no DOM, no filesystem, no timers, no
- *     randomness. Re-running yields identical results.
+ *   - Deterministic and side-effect free. The browser-contract suite performs a
+ *     single, local source-file read — `fs.readFileSync` of this package's own
+ *     `index.js` — so it can evaluate the UMD browser branch in a fresh VM
+ *     context (see the "browser (UMD) dependency contract" suite below). Apart
+ *     from that one deterministic read there is no filesystem, network, DOM,
+ *     timer, or randomness. Re-running yields identical results.
  *
  * Contract under test (see `calculator-core/index.js`):
  *   - The module exports an object exposing TWO interchangeable delegating

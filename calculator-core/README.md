@@ -115,13 +115,15 @@ For the computation details, see the nested engine documentation:
 
 ### Commands
 
-Run from this module's directory:
+Run from this module's directory (`calculator-core`):
 
 ```bash
-cd calculator-core
 npm install      # installs jest ^30.4.2 (devDependency)
 npm test         # runs jest with default discovery (see note below)
 ```
+
+> From the parent repository root, run it in a subshell so the `cd` does not
+> persist: `(cd calculator-core && npm install && npm test)`.
 
 `npm test` invokes `jest` (declared in this module's `package.json`) with
 Jest's **default test discovery**, in the default Node test environment.

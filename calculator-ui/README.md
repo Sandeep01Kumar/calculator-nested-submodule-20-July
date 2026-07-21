@@ -30,7 +30,8 @@ percentage, and writes the numeric result back into `<input id="display">`.
 | `index.html` | Calculator markup — the shared `#display` input, the `#percent` (`%`) button, a two-press instructions blurb, a live `#status` region, and the ordered `<script>` tags that load the engine, core, and app. Contains **no** inline logic. |
 | `app.js` | The click handler / wiring: reads the operand from `#display`, delegates the computation to the `calculator-core` percentage API, and writes the numeric result back to the display. Holds all UI behavior; JSDoc-annotated. |
 | `style.css` | Minimal, framework-free styling — 50×40 buttons, a compact card layout, and a visible keyboard focus indicator. |
-| `app.test.js` | jsdom-based Jest test suite (**16 tests**) covering the `%` button, the two-press interaction, whole-value numeric coercion, and failure-safe display handling. |
+| `app.test.js` | jsdom-based Jest test suite (**19 tests**) covering the `%` button, the two-press interaction, whole-value numeric coercion, failure-safe display handling, and the missing-`#display` fail-safe (APP-1). |
+| `app.node.test.js` | Node-environment Jest suite (**6 tests**, `@jest-environment node`) covering the no-`document` defensive guards and the DOM-free helpers (APP-1). |
 | `package.json` | Module manifest declaring the Jest + jsdom dev tooling and the `test` script. |
 
 ---
@@ -133,19 +134,31 @@ in-tree sibling directories under the parent repository.
 
 ### Commands
 
-Run from this module's directory:
+Run from this module's directory (`calculator-ui`):
 
 ```bash
-cd calculator-ui
 npm install   # installs jest ^30.4.2 and jest-environment-jsdom ^30.4.1 (devDependencies)
-npm test      # runs jest in the jsdom environment -> executes app.test.js
+npm test      # runs jest -> executes app.test.js (jsdom) and app.node.test.js (Node)
 ```
 
-`npm test` invokes `jest` (declared in this module's `package.json`) in the
-**jsdom** test environment (`"testEnvironment": "jsdom"`), which supplies the DOM
-globals the UI tests need. The suite in `app.test.js` builds a small DOM,
-simulates clicking the `%` button through the two-press interaction, and asserts
-that the display updates correctly and that non-numeric input is coerced to `0`.
+> From the parent repository root, run it in a subshell so the `cd` does not
+> persist: `(cd calculator-ui && npm install && npm test)`.
+
+`npm test` invokes `jest` (declared in this module's `package.json`). The default
+test environment is **jsdom** (`"testEnvironment": "jsdom"`), which supplies the
+DOM globals the UI tests need. Jest discovers **two** suites here (**25 tests**
+total):
+
+- **`app.test.js` (19 tests, jsdom).** Builds a small DOM, simulates clicking the
+  `%` button through the two-press interaction, and asserts that the display
+  updates correctly, that non-numeric input is coerced to `0`, and that a missing
+  `#display` element clears any pending base (the fail-safe policy).
+- **`app.node.test.js` (6 tests, Node).** Runs in the default **Node** test
+  environment via a `@jest-environment node` docblock (overriding the jsdom
+  default for that one file) so `document` is genuinely absent. It proves the
+  exported helpers are safe to call without a DOM — `init()` and `handlePercent()`
+  never throw and leave the interaction state cleared — and that the DOM-free
+  helpers still work.
 
 ---
 

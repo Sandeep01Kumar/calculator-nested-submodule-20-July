@@ -92,13 +92,15 @@ runtimes with **no bundler and zero dependencies**. The sibling
 
 ### Commands
 
-Run the module's tests from its own directory:
+Run the module's tests from its own directory (`calculator-core/math-engine`):
 
 ```bash
-cd calculator-core/math-engine
 npm install   # installs jest ^30.4.2 (devDependency)
 npm test      # runs jest -> executes percentage.test.js (default Node env)
 ```
+
+> From the parent repository root, run it in a subshell so the `cd` does not
+> persist: `(cd calculator-core/math-engine && npm install && npm test)`.
 
 `npm test` invokes `jest`, which discovers and runs the module's `*.test.js`
 files. This module uses the **default Node test environment** (not jsdom), since
