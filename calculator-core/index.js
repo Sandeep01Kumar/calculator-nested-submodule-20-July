@@ -55,8 +55,25 @@
   } else {
     // Browser runtime (no module system): the math-engine module must be loaded
     // FIRST via its own <script> tag, exposing the bare function as the global
-    // `window.percentage` (root.percentage). Build the API around that global
-    // and publish the result as `window.calculatorCore`.
+    // `window.percentage` (root.percentage).
+    //
+    // Validate that dependency is present AND callable BEFORE building or
+    // publishing the API. Failing fast here means a missing or malformed engine
+    // produces an immediate, descriptive module-contract error, instead of a
+    // `window.calculatorCore` that looks initialized but whose methods throw a
+    // generic "percentage is not a function" TypeError only on first use — a
+    // broken state that loading the engine afterwards would not repair.
+    if (typeof root.percentage !== 'function') {
+      throw new TypeError(
+        'calculator-core: missing dependency — the math-engine `percentage` ' +
+        'global was not found. Load "math-engine/percentage.js" via its own ' +
+        '<script> tag (so that window.percentage is defined as a function) ' +
+        'BEFORE loading "calculator-core/index.js".'
+      );
+    }
+
+    // Dependency validated: build the API around the engine global and publish
+    // it as `window.calculatorCore`.
     root.calculatorCore = factory(root.percentage);
   }
 }(typeof self !== 'undefined' ? self : this, function (percentage) {
@@ -70,10 +87,13 @@
    *
    * @param {number} a - The base value.
    * @param {number} b - The percent to apply.
-   * @returns {number} The engine's numeric result for "b percent of a".
-   *                    Non-numeric inputs propagate the engine's behavior
-   *                    (NaN); numeric coercion/validation is handled at the UI
-   *                    layer per the project's input-hygiene decision.
+   * @returns {number} The engine's result for "b percent of a": `(a * b) / 100`
+   *                    when both operands are of type `number`, otherwise `NaN`.
+   *                    This layer performs NO validation of its own — it
+   *                    forwards operands verbatim, so the engine's strict
+   *                    non-number-rejection contract applies unchanged. The
+   *                    calculator-ui layer separately coerces user-entered text
+   *                    to numbers before calling (AAP §0.7.4).
    * @example
    * calculatePercentage(200, 10);  // => 20    (10% of 200)
    * calculatePercentage(50, 12.5); // => 6.25

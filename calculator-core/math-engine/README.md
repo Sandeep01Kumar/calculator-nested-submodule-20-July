@@ -36,9 +36,15 @@ other binary operations.
 | `b` | `number` | The percent to apply. |
 | **returns** | `number` | The result of `(a * b) / 100`. |
 
-> **Input hygiene.** Non-numeric input yields **`NaN`**. Numeric coercion and
-> validation are intentionally handled at the **UI layer** (input hygiene is a
-> presentation concern), so this function stays a minimal, pure calculation.
+> **Input hygiene.** The engine **strictly rejects non-number operands**: if
+> either argument is not of type `number` — a string (including a numeric
+> string like `'10'` or the empty string `''`), `null`, `undefined`, a boolean,
+> an array, or an object — the function returns **`NaN`** rather than coercing
+> the value. Valid numbers are computed exactly as `(a * b) / 100`. The
+> `calculator-ui` layer *additionally* coerces user-entered display text to
+> numbers **before** calling, so end users see a controlled value instead of
+> `NaN` (a presentation concern, AAP §0.7.4); that UI coercion does not relax
+> the engine's own contract.
 
 #### Export shape
 
@@ -106,7 +112,8 @@ the computation has no DOM dependency.
 - **zero** (e.g. `percentage(100, 0) === 0`),
 - **negative** operands (e.g. `percentage(-80, 25) === -20`),
 - **decimal** operands (e.g. `percentage(50, 12.5) === 6.25`), and
-- **non-numeric** input, which is expected to produce `NaN`.
+- **non-number** operands — including *coercible* values such as `'10'`, `''`,
+  `null`, booleans, and arrays — each of which is rejected and yields `NaN`.
 
 ---
 

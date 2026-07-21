@@ -70,13 +70,44 @@ describe('math-engine percentage(a, b) = (a * b) / 100', () => {
     expect(percentage(33, 33)).toBeCloseTo(10.89, 10); // 33% of 33
   });
 
-  test('propagates NaN for non-numeric input (coercion is a UI-layer concern)', () => {
-    // The engine performs pure arithmetic and does NOT coerce/validate inputs;
-    // numeric coercion is intentionally the UI layer's responsibility
-    // (AAP §0.7.4). Non-numeric operands therefore propagate as NaN, which this
-    // test documents as the expected, contractual behavior.
-    expect(Number.isNaN(percentage('a', 10))).toBe(true);
-    expect(Number.isNaN(percentage(undefined, 10))).toBe(true);
-    expect(Number.isNaN(percentage(10, undefined))).toBe(true);
+  test('rejects non-number operands by returning NaN (strict input contract)', () => {
+    // The engine strictly validates operand TYPES: any operand that is not a
+    // real `number` is rejected with NaN instead of being coerced by the `*`
+    // operator. This is the engine's OWN contract (see percentage.js JSDoc);
+    // the calculator-ui layer separately coerces display text to numbers before
+    // calling (AAP §0.7.4). We deliberately include *coercible* non-numbers,
+    // because those are precisely the values `*` would otherwise turn into a
+    // plausible-but-wrong result.
+    const nonNumbers = [
+      'a', // non-numeric string
+      '10', // numeric STRING — must NOT be coerced to the number 10
+      '', // empty string — must NOT be coerced to 0
+      null, // must NOT be coerced to 0
+      undefined, // must NOT be treated as a number
+      true, // boolean — must NOT be coerced to 1
+      false, // boolean — must NOT be coerced to 0
+      [], // array — must NOT be coerced to 0
+      {}, // object
+      NaN, // number-typed but not-a-number; result stays NaN
+    ];
+
+    for (const bad of nonNumbers) {
+      // Rejected in either operand position...
+      expect(Number.isNaN(percentage(bad, 10))).toBe(true);
+      expect(Number.isNaN(percentage(10, bad))).toBe(true);
+      // ...and when both operands are non-numbers.
+      expect(Number.isNaN(percentage(bad, bad))).toBe(true);
+    }
+  });
+
+  test('regression: coercible non-numbers are not turned into plausible results', () => {
+    // Pin the exact coercion cases the input-integrity review flagged. Without
+    // the strict type guard these previously returned 2, 0, 0, 0.2, and 0
+    // respectively — a documented-contract violation. They must now be NaN.
+    expect(Number.isNaN(percentage('10', 20))).toBe(true); // previously 2
+    expect(Number.isNaN(percentage('', 20))).toBe(true); //   previously 0
+    expect(Number.isNaN(percentage(null, 20))).toBe(true); // previously 0
+    expect(Number.isNaN(percentage(true, 20))).toBe(true); // previously 0.2
+    expect(Number.isNaN(percentage([], 20))).toBe(true); //   previously 0
   });
 });

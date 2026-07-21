@@ -45,10 +45,13 @@ computation locally — each calls through to the engine.
 | `b` | `number` | The percent to apply. |
 | **returns** | `number` | The result of `(a * b) / 100`. |
 
-> **Input hygiene.** Non-numeric input propagates the engine's behavior and
-> yields `NaN`. Numeric coercion/validation is intentionally handled at the
-> **UI layer** (a presentation concern), so this API stays a minimal, pure
-> delegation.
+> **Input hygiene.** This API performs no validation of its own — it forwards
+> operands verbatim to the engine, whose **strict** contract therefore applies
+> unchanged: any non-`number` operand (a string — including a numeric string
+> such as `'10'` or the empty string `''` — `null`, `undefined`, a boolean, an
+> array, or an object) yields `NaN`, while valid numbers compute `(a * b) / 100`.
+> The `calculator-ui` layer additionally coerces user-entered display text to
+> numbers **before** calling (a presentation concern, AAP §0.7.4).
 
 ### Node.js / CommonJS usage
 
@@ -117,18 +120,44 @@ Run from this module's directory:
 ```bash
 cd calculator-core
 npm install      # installs jest ^30.4.2 (devDependency)
-npm test         # runs jest -> executes index.test.js
+npm test         # runs jest with default discovery (see note below)
 ```
 
-`npm test` invokes `jest` (declared in this module's `package.json`), which
-discovers and runs the module's `*.test.js` files using the default Node test
-environment.
+`npm test` invokes `jest` (declared in this module's `package.json`) with
+Jest's **default test discovery**, in the default Node test environment.
+Because Jest recurses into subdirectories, running it from `calculator-core/`
+discovers **two** suites:
+
+- `index.test.js` — the core API, delegation, and browser-contract tests
+  (**13 tests**), and
+- `math-engine/percentage.test.js` — the nested engine's own unit tests
+  (**7 tests**).
+
+Together they run **20 tests across 2 suites**. Exercising the nested engine
+suite alongside the core API is intentional: it validates the whole delegation
+path end to end. To run only the core suite in isolation, target it explicitly:
+
+```bash
+npx jest index.test.js   # runs just the calculator-core API suite (13 tests)
+```
 
 ### Test coverage
 
-`index.test.js` verifies the **API contract and its delegation to the engine** —
-that `percentage` and `calculatePercentage` both forward to
-`math-engine/percentage.js` and return `(a * b) / 100`.
+`index.test.js` verifies the **API contract and its delegation to the engine**:
+
+- **Delegation (proven with a mock/spy).** The engine module is replaced with a
+  mock that returns a unique sentinel value; the suite asserts that both
+  `percentage` and `calculatePercentage` forward the exact arguments to the
+  engine and return its exact result. Because the core returns the sentinel
+  (not a computed number), this proves genuine forwarding rather than a copied
+  `(a * b) / 100` implementation — an output-only comparison could not.
+- **Output behavior.** Separate cases confirm the API computes "b percent of a"
+  (`(a * b) / 100`) for representative numeric inputs and does not diverge from
+  the real engine's output.
+- **Browser (UMD) contract.** The browser branch is evaluated in a VM context
+  to confirm it publishes a working `window.calculatorCore` when the engine
+  global is present, and **fails fast** — without publishing a broken API —
+  when that global is missing or non-callable.
 
 ---
 

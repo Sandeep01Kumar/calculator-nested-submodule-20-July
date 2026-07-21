@@ -30,13 +30,21 @@
 
 'use strict';
 
+// Node built-ins used only by the browser-contract suite below, which evaluates
+// index.js in a fresh VM context to exercise its UMD browser branch.
+const fs = require('fs');
+const path = require('path');
+const vm = require('vm');
+
 // Module under test: the calculator-core public API surface.
 const core = require('./index');
 
-// The computation engine itself. Imported ONLY to prove, in the delegation
-// assertions below, that the core API does not diverge from the single source
-// of truth for the arithmetic. This path is part of this file's declared
-// dependencies (depends_on_files).
+// The computation engine itself. Imported for the OUTPUT-EQUIVALENCE check below
+// (that core's results match the real engine's results for the same inputs).
+// NOTE: output equivalence alone does NOT prove delegation — a core that
+// re-implemented `(a*b)/100` would also match. Genuine forwarding is proven
+// separately, with a mock, in the "delegation to the math-engine (mock/spy
+// proof)" suite. This path is part of this file's declared dependencies.
 const engine = require('./math-engine/percentage');
 
 describe('calculator-core percentage API', () => {
@@ -87,11 +95,14 @@ describe('calculator-core percentage API', () => {
     expect(core.percentage(200, 10)).toBe(core.calculatePercentage(200, 10));
   });
 
-  test('delegates to the math-engine percentage function (no divergence)', () => {
-    // Prove the core API returns exactly what the engine returns for the same
-    // inputs — i.e. it forwards rather than re-implementing the arithmetic.
-    // Because both call the identical engine function on identical inputs, the
-    // outputs are bit-for-bit equal, so strict equality (toBe) is appropriate.
+  test('produces no output divergence from the real engine', () => {
+    // Sanity check: the core API returns exactly what the real engine returns
+    // for the same inputs. This guards against accidental output drift, but by
+    // itself it does NOT prove delegation — a core that re-implemented the same
+    // formula would also match. Genuine forwarding is proven separately in the
+    // "delegation to the math-engine (mock/spy proof)" suite below.
+    // Because both paths compute on identical inputs, the outputs are
+    // bit-for-bit equal, so strict equality (toBe) is appropriate.
     const cases = [
       [200, 10],
       [50, 10],
@@ -109,5 +120,129 @@ describe('calculator-core percentage API', () => {
       expect(core.percentage(a, b)).toBe(expected);
       expect(core.calculatePercentage(a, b)).toBe(expected);
     }
+  });
+});
+
+describe('calculator-core delegation to the math-engine (mock/spy proof)', () => {
+  // A true delegation proof must show the core FORWARDS to the engine and
+  // RETURNS whatever the engine returns — independent of the arithmetic. We
+  // replace the engine module with a mock that returns a unique sentinel, then
+  // assert the core forwards the exact arguments and propagates the exact
+  // sentinel. A core that re-implemented `(a*b)/100` would return a NUMBER (not
+  // the sentinel) and would therefore FAIL these assertions — which is exactly
+  // why an output-only comparison cannot establish delegation.
+  afterEach(() => {
+    // Restore the real module registry between cases in this suite.
+    jest.resetModules();
+    jest.dontMock('./math-engine/percentage');
+  });
+
+  test('forwards the exact arguments to the engine and returns its exact result', () => {
+    jest.isolateModules(() => {
+      const engineMock = jest.fn();
+      // `jest.doMock` is NOT hoisted, so it must run BEFORE requiring the core
+      // inside this isolated module registry.
+      jest.doMock('./math-engine/percentage', () => engineMock);
+
+      const isolatedCore = require('./index');
+      const sentinel = Symbol('engine-result');
+      engineMock.mockReturnValue(sentinel);
+
+      // `percentage` alias forwards exact args and returns the engine's value.
+      expect(isolatedCore.percentage(200, 10)).toBe(sentinel);
+      expect(engineMock).toHaveBeenCalledTimes(1);
+      expect(engineMock).toHaveBeenLastCalledWith(200, 10);
+
+      // `calculatePercentage` alias forwards identically.
+      expect(isolatedCore.calculatePercentage(50, 25)).toBe(sentinel);
+      expect(engineMock).toHaveBeenCalledTimes(2);
+      expect(engineMock).toHaveBeenLastCalledWith(50, 25);
+    });
+  });
+
+  test('both public aliases are the same delegating function object', () => {
+    jest.isolateModules(() => {
+      const engineMock = jest.fn();
+      jest.doMock('./math-engine/percentage', () => engineMock);
+
+      const isolatedCore = require('./index');
+      // Interchangeable: the two public names reference the very same function.
+      expect(isolatedCore.percentage).toBe(isolatedCore.calculatePercentage);
+    });
+  });
+});
+
+describe('calculator-core browser (UMD) dependency contract', () => {
+  // Exercise the BROWSER branch of index.js by evaluating its source in a fresh
+  // VM context where `module` is undefined and a browser-like global object
+  // (`self`) is present. This reproduces loading the file via a <script> tag.
+  const indexSource = fs.readFileSync(path.join(__dirname, 'index.js'), 'utf8');
+
+  function runInBrowserContext(sandbox) {
+    vm.createContext(sandbox);
+    vm.runInContext(indexSource, sandbox);
+    return sandbox;
+  }
+
+  test('publishes a working window.calculatorCore when the engine global is present', () => {
+    // Happy path: the engine <script> is loaded first, so window.percentage
+    // exists as a function before index.js runs.
+    const sandbox = { self: null };
+    sandbox.self = sandbox;
+    sandbox.percentage = (a, b) => (a * b) / 100;
+
+    runInBrowserContext(sandbox);
+
+    expect(typeof sandbox.calculatorCore).toBe('object');
+    expect(sandbox.calculatorCore).not.toBeNull();
+    expect(typeof sandbox.calculatorCore.percentage).toBe('function');
+    expect(typeof sandbox.calculatorCore.calculatePercentage).toBe('function');
+    expect(sandbox.calculatorCore.percentage(200, 10)).toBe(20);
+    expect(sandbox.calculatorCore.calculatePercentage(50, 10)).toBe(5);
+  });
+
+  test('fails fast and does NOT publish a broken API when the engine global is missing', () => {
+    // Negative path: index.js is loaded WITHOUT the engine <script> first, so
+    // window.percentage is undefined. The module must throw a clear
+    // module-contract error at load time instead of publishing a
+    // window.calculatorCore whose methods would later throw a generic TypeError.
+    const sandbox = { self: null };
+    sandbox.self = sandbox; // browser-like global; no `percentage` defined
+
+    let caught;
+    try {
+      runInBrowserContext(sandbox);
+    } catch (err) {
+      caught = err;
+    }
+
+    // The error originates inside the VM realm, so its constructor is that
+    // realm's TypeError (not this test realm's). Assert by name/message rather
+    // than `instanceof`, which is not reliable across realms.
+    expect(caught).toBeDefined();
+    expect(caught.name).toBe('TypeError');
+    expect(caught.message).toMatch(/calculator-core: missing dependency/i);
+    // Crucially, no broken global was published.
+    expect(sandbox.calculatorCore).toBeUndefined();
+  });
+
+  test('rejects a present-but-non-callable engine global', () => {
+    // Defensive: even if `percentage` exists but is not a function, the API
+    // must not be published in a broken state.
+    const sandbox = { self: null };
+    sandbox.self = sandbox;
+    sandbox.percentage = 'not-a-function';
+
+    let caught;
+    try {
+      runInBrowserContext(sandbox);
+    } catch (err) {
+      caught = err;
+    }
+
+    // Realm-safe assertion (see note above): check by name, not `instanceof`.
+    expect(caught).toBeDefined();
+    expect(caught.name).toBe('TypeError');
+    expect(sandbox.calculatorCore).toBeUndefined();
   });
 });

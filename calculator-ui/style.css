@@ -2,10 +2,12 @@
  *
  * Minimal, framework-free styling for the calculator UI (AAP §0.5.3, §0.7.2).
  * Plain CSS only: no preprocessor, no remote/framework stylesheet imports,
- * and no network-fetched web fonts. This stylesheet is linked from index.html
- * via a same-directory stylesheet link tag.
+ * and no network-fetched web fonts. This stylesheet is intended to be linked
+ * from index.html via a same-directory <link rel="stylesheet"> tag once that
+ * markup exists (index.html is planned for the UI milestone).
  *
- * Selector contract (kept in sync with calculator-ui/index.html):
+ * Planned selector contract (to be kept in sync with calculator-ui/index.html
+ * when it is added):
  *   .calculator          - outer card container
  *   .calculator__title   - heading text
  *   .calculator__display - the #display input (current operand / percentage result)
