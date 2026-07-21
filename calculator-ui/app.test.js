@@ -297,6 +297,95 @@ describe('calculator-ui percentage (%) button', () => {
   });
 });
 
+// --- Unsafe whole-number input guard (finding FA-UI-3) -----------------------
+// A whole-number literal beyond the JS safe-integer range would silently round
+// under numeric coercion (Number('9007199254740993') === 9007199254740992). The
+// handler must reject such input up front: show a controlled '0', announce a
+// clear message, clear any pending base, and NEVER compute against a value the
+// user did not type. Decimals, exponent forms, malformed input, and safe
+// integers (including the MAX_SAFE boundary) must be unaffected.
+describe('calculator-ui percentage (%) button — unsafe integer guard (FA-UI-3)', () => {
+  /** @type {jest.Mock} A deterministic local stub standing in for calculator-core. */
+  let percentSpy;
+
+  beforeEach(() => {
+    setupDom();
+    app.resetState();
+    percentSpy = jest.fn((a, b) => (a * b) / 100);
+    window.calculatorCore = { percentage: percentSpy, calculatePercentage: percentSpy };
+    app.init();
+  });
+
+  afterEach(() => {
+    delete window.calculatorCore;
+    document.body.innerHTML = '';
+    app.resetState();
+  });
+
+  test('isUnsafeIntegerInput flags only integer literals beyond the safe range', () => {
+    // TRUE: pure integer literals whose exact value is not a JS safe integer.
+    expect(app.isUnsafeIntegerInput('9007199254740993')).toBe(true);    // rounds to ...992
+    expect(app.isUnsafeIntegerInput('-9007199254740993')).toBe(true);
+    expect(app.isUnsafeIntegerInput('  9007199254740993  ')).toBe(true); // surrounding ws trimmed
+    // FALSE: the safe-integer boundary and ordinary safe integers.
+    expect(app.isUnsafeIntegerInput('9007199254740991')).toBe(false);   // MAX_SAFE_INTEGER
+    expect(app.isUnsafeIntegerInput('200')).toBe(false);
+    expect(app.isUnsafeIntegerInput('0')).toBe(false);
+    expect(app.isUnsafeIntegerInput('+5')).toBe(false);
+    // FALSE: not a pure integer literal -> handled by toNumber's controlled-0 path.
+    expect(app.isUnsafeIntegerInput('12.5')).toBe(false);   // decimal
+    expect(app.isUnsafeIntegerInput('1e309')).toBe(false);  // exponent / overflow form
+    expect(app.isUnsafeIntegerInput('10abc')).toBe(false);  // malformed prefix
+    expect(app.isUnsafeIntegerInput('')).toBe(false);       // empty
+    expect(app.isUnsafeIntegerInput(null)).toBe(false);
+    expect(app.isUnsafeIntegerInput(undefined)).toBe(false);
+  });
+
+  test('first % press with an unsafe integer shows a controlled 0 and does not compute', () => {
+    const display = document.getElementById('display');
+    const button = document.getElementById('percent');
+    display.value = '9007199254740993'; // would silently round to ...992 under coercion
+    button.click();
+    // Controlled result: display reset to '0' (never the rounded ...992), the core
+    // NOT called, no stale base captured, and a clear safe-range message announced.
+    expect(display.value).toBe('0');
+    expect(display.value).not.toBe('9007199254740992');
+    expect(percentSpy).not.toHaveBeenCalled();
+    expect(app.getState().firstOperand).toBeNull();
+    expect(document.getElementById('status').textContent).toContain('safe integer');
+  });
+
+  test('second % press with an unsafe integer resets the interaction to a controlled 0', () => {
+    const display = document.getElementById('display');
+    const button = document.getElementById('percent');
+    display.value = '200';
+    button.click();                     // first press: store base 200, clear display
+    expect(app.getState().firstOperand).toBe(200);
+    display.value = '9007199254740993'; // unsafe percent operand on the second press
+    button.click();                     // guard fires: controlled 0, base cleared, no compute
+    expect(display.value).toBe('0');
+    expect(percentSpy).not.toHaveBeenCalled();
+    expect(app.getState().firstOperand).toBeNull();
+    expect(document.getElementById('status').textContent).toContain('safe integer');
+  });
+
+  test('the MAX_SAFE boundary and decimals pass the guard unchanged (regression)', () => {
+    const display = document.getElementById('display');
+    const button = document.getElementById('percent');
+    // Boundary: MAX_SAFE_INTEGER is a safe integer and must be accepted normally.
+    display.value = '9007199254740991';
+    button.click();
+    expect(display.value).toBe('');                              // stored, not rejected
+    expect(app.getState().firstOperand).toBe(9007199254740991);
+    expect(percentSpy).not.toHaveBeenCalled();
+    // A decimal percent is never treated as an unsafe integer; compute proceeds.
+    display.value = '12.5';
+    button.click();
+    expect(percentSpy).toHaveBeenCalledWith(9007199254740991, 12.5);
+    expect(app.getState().firstOperand).toBeNull();
+  });
+});
+
 // --- Defensive missing-#display behavior (APP-1) -----------------------------
 // Regression coverage for the fail-safe missing-display policy: when #display is
 // absent while the handler runs, handlePercent() must CLEAR any pending base and
@@ -411,11 +500,15 @@ describe('calculator-ui percentage (%) button — real calculator-core integrati
   test('a genuine IEEE-754 overflow surfaces as a controlled 0, never Infinity (SAFE-1)', () => {
     const display = document.getElementById('display');
     const button = document.getElementById('percent');
-    // In the real engine, percentage(1e308, 100) = (1e308 * 100) / 100 overflows
-    // to Infinity; the UI must render a controlled '0', never 'Infinity'.
+    // After the FA-ENG-1 overflow-recovery fix, percentage(1e308, 100) no longer
+    // spuriously overflows — the engine factors the /100 and returns the finite
+    // 1e308 (100% of 1e308). To still exercise the controlled-0 policy for a
+    // GENUINE IEEE-754 overflow, use two large operands whose product overflows
+    // even under the engine's factored a*(b/100) fallback: percentage(1e308,
+    // 1e308) = Infinity. The UI must render a controlled '0', never 'Infinity'.
     display.value = '1e308';
     button.click();
-    display.value = '100';
+    display.value = '1e308';
     button.click();
     expect(display.value).toBe('0');
     expect(display.value).not.toBe('Infinity');

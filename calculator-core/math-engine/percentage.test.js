@@ -110,4 +110,37 @@ describe('math-engine percentage(a, b) = (a * b) / 100', () => {
     expect(Number.isNaN(percentage(true, 20))).toBe(true); // previously 0.2
     expect(Number.isNaN(percentage([], 20))).toBe(true); //   previously 0
   });
+
+  test('regression (FA-ENG-1): a representable extreme result is not lost to intermediate overflow', () => {
+    // Finding FA-ENG-1: `(Number.MAX_VALUE * 100) / 100` overflows at the
+    // intermediate product to Infinity even though the true answer — 100% of
+    // Number.MAX_VALUE — is exactly Number.MAX_VALUE, a representable finite
+    // value. The engine must recover that finite result via the equivalent
+    // `a * (b / 100)` regrouping rather than returning Infinity.
+    expect(percentage(Number.MAX_VALUE, 100)).toBe(Number.MAX_VALUE);
+    expect(Number.isFinite(percentage(Number.MAX_VALUE, 100))).toBe(true);
+
+    // A large base at a small percent likewise stays finite and exact (this case
+    // never overflowed, so it exercises the primary grouping unchanged).
+    expect(percentage(Number.MAX_VALUE, 1)).toBe(Number.MAX_VALUE / 100);
+  });
+
+  test('regression (FA-ENG-1): a GENUINE overflow still returns Infinity', () => {
+    // When the TRUE result genuinely exceeds Number.MAX_VALUE, both groupings
+    // overflow, so the contract is unchanged — the result stays ±Infinity and is
+    // never silently turned into a misleading finite number.
+    expect(percentage(Number.MAX_VALUE, 200)).toBe(Infinity); // 2 * MAX_VALUE
+    expect(percentage(1e308, 1e308)).toBe(Infinity); //          product overflows
+    expect(percentage(-Number.MAX_VALUE, 200)).toBe(-Infinity); // signed genuine overflow
+  });
+
+  test('regression (FA-ENG-1): the primary (a * b) / 100 grouping is preserved exactly for ordinary inputs', () => {
+    // The overflow-safe fallback must NOT change ordinary results. In particular
+    // the exact-decimal case `(0.1 * 20) / 100 === 0.02` must stay 0.02 and must
+    // NOT drift to `0.1 * (20 / 100) === 0.020000000000000004`. `toBe` is used
+    // deliberately to catch any such regrouping regression.
+    expect(percentage(0.1, 20)).toBe(0.02);
+    expect(percentage(200, 10)).toBe(20);
+    expect(percentage(50, 10)).toBe(5);
+  });
 });

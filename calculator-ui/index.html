@@ -3,6 +3,27 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!--
+      SEO description (finding FA-UI-2): a concise, human-readable summary of the
+      page that search engines and link-preview cards surface. Its absence caused
+      the Lighthouse SEO "document does not have a meta description" audit to fail.
+    -->
+    <meta
+      name="description"
+      content="A minimal, framework-free percentage calculator: enter a base value, press %, enter the percent, then press % again to compute b percent of a."
+    />
+    <!--
+      Inline SVG favicon as a data URI (finding FA-UI-1). Providing an icon inline
+      stops the browser from requesting the default /favicon.ico, which produced a
+      404 network response and an accompanying console error on every page load.
+      A data URI triggers NO network request (the icon is embedded here) and keeps
+      the module framework-free with zero external/CDN assets; it renders a "%"
+      glyph consistent with the calculator's single operation.
+    -->
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ctext x='1' y='13' font-size='13'%3E%25%3C/text%3E%3C/svg%3E"
+    />
     <title>Calculator &mdash; Percentage</title>
     <link rel="stylesheet" href="style.css" />
     <!--

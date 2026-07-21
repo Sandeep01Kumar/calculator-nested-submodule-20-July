@@ -44,7 +44,12 @@
  * trimmed string), so a value that is not entirely numeric (e.g. `'10abc'`)
  * collapses to 0 rather than being silently truncated to a plausible prefix.
  * (The math-engine layer strictly rejects non-number operands with NaN, so this
- * UI-level coercion is what guarantees users see a real number.)
+ * UI-level coercion is what guarantees users see a real number.) In addition, a
+ * whole-number literal whose exact value exceeds the JS safe-integer range (e.g.
+ * `9007199254740993`, which would silently round to `9007199254740992`) is
+ * rejected up front by `isUnsafeIntegerInput` — the display is reset to a
+ * controlled 0 with a clear status message — so the calculator never computes
+ * against a rounded value the user did not type (finding FA-UI-3).
  *
  * Failure safety (extends the AAP §0.7.4 "controlled result" mandate to the
  * failure paths — "failure paths reset state and fail predictably" and "the UI
@@ -106,6 +111,50 @@
     }
     var n = Number(trimmed);
     return Number.isFinite(n) ? n : 0;
+  }
+
+  /**
+   * Detect a raw display value that is a WHOLE-NUMBER (integer) literal whose
+   * exact value cannot be represented as a JavaScript safe integer (finding
+   * FA-UI-3).
+   *
+   * JavaScript numbers are IEEE-754 doubles, so integer literals beyond
+   * ±`Number.MAX_SAFE_INTEGER` (9007199254740991) are SILENTLY rounded to the
+   * nearest representable double — e.g. `Number('9007199254740993')` yields
+   * `9007199254740992`. Because that rounded value is still finite, plain
+   * `toNumber` coercion would accept it, and the calculator would compute against
+   * a number the user never typed WITHOUT any indication. That silent precision
+   * loss is exactly what this guard prevents: such input is rejected up front so
+   * the UI can show a controlled result and a clear message instead (AAP §0.7.4,
+   * "the UI never exposes an uncontrolled/misleading result").
+   *
+   * Scope is deliberately narrow — ONLY pure integer literals are candidates:
+   *   - The trimmed string must match `/^[+-]?\d+$/` (optional sign + digits, with
+   *     NO decimal point and NO exponent). This EXCLUDES decimals (`'12.5'`),
+   *     exponent forms (`'1e309'`), and malformed input (`'10abc'`), all of which
+   *     are already handled by `toNumber`'s controlled-0 coercion and must NOT be
+   *     treated as "unsafe integers".
+   *   - Its numeric value must NOT be a safe integer. `Number.isSafeInteger` is
+   *     `false` in BOTH failure modes this guard targets: a finite-but-rounded
+   *     integer (beyond the safe range) and an integer literal so long it
+   *     overflowed to `±Infinity`. A single check therefore catches both.
+   * @param {*} value - The raw value read from the display input.
+   * @returns {boolean} `true` when `value` is an integer literal that cannot be
+   *   represented exactly as a JS safe integer; otherwise `false`.
+   */
+  function isUnsafeIntegerInput(value) {
+    if (value === null || value === undefined) {
+      return false;
+    }
+    var trimmed = String(value).trim();
+    // Only pure integer literals (no decimal point, no exponent) are candidates.
+    if (!/^[+-]?\d+$/.test(trimmed)) {
+      return false;
+    }
+    // Unsafe when the exact integer value is not representable as a JS safe
+    // integer — either silently rounded (finite, beyond ±MAX_SAFE_INTEGER) or
+    // overflowed to ±Infinity. Number.isSafeInteger is false in both cases.
+    return !Number.isSafeInteger(Number(trimmed));
   }
 
   /**
@@ -271,6 +320,25 @@
       state.firstOperand = null;
       return;
     }
+
+    // Unsafe-integer guard (finding FA-UI-3): reject a whole-number literal whose
+    // exact value cannot be represented as a JS safe integer (e.g. the user typed
+    // 9007199254740993, which would silently round to 9007199254740992). This is
+    // checked on the RAW display string BEFORE numeric coercion so the rounding is
+    // never allowed to happen. Applied on EITHER press: show a controlled '0',
+    // announce a clear message, and clear any pending base so the interaction
+    // resets to a predictable state rather than computing against a value the user
+    // did not type (AAP §0.7.4 controlled-result mandate).
+    if (isUnsafeIntegerInput(display.value)) {
+      display.value = '0';
+      setStatus(
+        'That whole number is outside the safe integer range ' +
+        '(\u00b19007199254740991) and cannot be used precisely; display reset to 0.'
+      );
+      state.firstOperand = null;
+      return;
+    }
+
     var current = toNumber(display.value);
 
     if (state.firstOperand === null) {
@@ -375,6 +443,7 @@
       init: init,
       handlePercent: handlePercent,
       toNumber: toNumber,
+      isUnsafeIntegerInput: isUnsafeIntegerInput,
       getState: getState,
       resetState: resetState,
       getCore: getCore

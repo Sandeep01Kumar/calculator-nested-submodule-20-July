@@ -20,7 +20,7 @@
  * UMD dual-export (a single file works in BOTH runtimes, with NO bundler and
  * ZERO production dependencies):
  *   - Node.js / CommonJS:
- *       const core = require('calculator-core'); // or require('./index')
+ *       const core = require('.'); // resolves the package "main" (index.js)
  *       core.percentage(200, 10);         // => 20
  *       core.calculatePercentage(50, 10); // => 5
  *     The engine is resolved via `require('./math-engine/percentage')`.
@@ -39,7 +39,7 @@
  * @see module:math-engine/percentage
  * @example
  * // Node.js
- * const core = require('calculator-core');
+ * const core = require('.');
  * core.percentage(200, 10);         // => 20  (10% of 200)
  * core.calculatePercentage(50, 10); // => 5   (10% of 50)
  */
