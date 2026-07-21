@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Calculator &mdash; Percentage</title>
+    <link rel="stylesheet" href="style.css" />
+    <!--
+      calculator-ui/index.html — Calculator UI markup (presentation layer).
+
+      Role (AAP §0.5.1 Group 3, §0.5.2, §0.5.3): a minimal, framework-free
+      vanilla HTML5 shell for the nested-submodule calculator. It provides the
+      shared display (#display) and the Percentage (%) button (#percent), links
+      the local stylesheet, and loads the JavaScript that wires the % button to
+      the calculator-core percentage API. It contains NO inline logic — all
+      behavior lives in app.js.
+
+      Control / data flow (AAP §0.1.3, §0.4.2):
+        #percent click
+          -> app.js handler
+            -> window.calculatorCore.percentage(a, b)
+              -> math-engine percentage(a, b) = (a * b) / 100
+        <- numeric result written into #display
+
+      Coordination contracts (keep stable):
+        - Element ids `display` and `percent` are a hard contract with app.js
+          (document.getElementById('display') / getElementById('percent')). Do
+          not rename without updating app.js and app.test.js.
+        - Class names mirror calculator-ui/style.css: calculator,
+          calculator__title, calculator__display, calculator__buttons,
+          calculator__button.
+        - The three <script> tags at the end of <body> MUST load in the order
+          engine -> core -> app (see note there). This order is non-negotiable
+          (UMD/dual-export, no bundler) so window.percentage and
+          window.calculatorCore exist before app.js executes.
+    -->
+  </head>
+  <body>
+    <main class="calculator">
+      <h1 class="calculator__title">Calculator</h1>
+
+      <!-- Shared display: user types an operand here; results are rendered here too. -->
+      <input
+        id="display"
+        class="calculator__display"
+        type="text"
+        inputmode="decimal"
+        aria-label="Calculator display"
+        value=""
+      />
+
+      <div class="calculator__buttons">
+        <!-- Percentage (%) button: computes (a * b) / 100 via calculator-core. -->
+        <button id="percent" type="button" class="calculator__button" aria-label="Percent">%</button>
+      </div>
+    </main>
+
+    <!--
+      Script load order matters (UMD/dual-export, no bundler):
+        1) engine  -> defines window.percentage
+        2) core    -> reads window.percentage, defines window.calculatorCore
+        3) app     -> consumes window.calculatorCore
+      The relative ../calculator-core/... paths resolve for the in-tree sibling
+      layout (parent -> calculator-ui/ and calculator-core/ are siblings).
+    -->
+    <script src="../calculator-core/math-engine/percentage.js"></script>
+    <script src="../calculator-core/index.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
