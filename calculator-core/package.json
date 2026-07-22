@@ -1,0 +1,13 @@
+{
+  "name": "calculator-core",
+  "version": "1.0.0",
+  "description": "API layer for the calculator: a thin delegation layer that exposes a percentage API and delegates computation to the nested math-engine module.",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "jest": "^30.4.2"
+  }
+}

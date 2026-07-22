@@ -1,0 +1,13 @@
+{
+  "name": "math-engine",
+  "version": "1.0.0",
+  "description": "Computation layer for the calculator: pure arithmetic functions following the one-function-per-file CommonJS convention. Provides percentage(a, b) = (a * b) / 100.",
+  "main": "percentage.js",
+  "scripts": {
+    "test": "jest"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "jest": "^30.4.2"
+  }
+}
